@@ -58,7 +58,11 @@ export function OpenAccounting() {
               <span className="mt-1 block font-medium text-ink">{view.updatedLabel}</span>
             </p>
           </div>
-          <div className="flex flex-wrap gap-2" role="group" aria-label="Reporting range">
+          <p className="text-sm leading-relaxed text-ink/60">An active trial or a paying member can open this page. In the product, the server enforces that rule.</p>
+        </header>
+
+        <div className="sticky top-0 z-30 -mx-5 border-b border-sand bg-cream/95 px-5 py-3 backdrop-blur">
+          <div className="flex min-w-0 gap-2 overflow-x-auto pb-1" role="group" aria-label="Reporting range">
             {(
               [
                 ["today", "Today"],
@@ -77,7 +81,7 @@ export function OpenAccounting() {
               </FilterButton>
             ))}
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-3 text-sm text-ink/70">
+          <div className="mt-3 flex flex-wrap items-center justify-between gap-3 text-sm text-ink/70">
             <p>
               {view.range.label}
               {stale ? " · Stale snapshot" : ""}
@@ -86,8 +90,7 @@ export function OpenAccounting() {
               Details
             </a>
           </div>
-          <p className="text-sm leading-relaxed text-ink/60">An active trial or a paying member can open this page. In the product, the server enforces that rule.</p>
-        </header>
+        </div>
 
         <Metrics view={view} stale={stale} />
 
@@ -108,18 +111,19 @@ export function OpenAccounting() {
           <Earners view={view} />
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
           <ExpenseSnapshot view={view} />
           <CompanySnapshot view={view} />
-          <Ownership view={view} />
           <Distributions view={view} />
         </div>
 
         <Results view={view} />
 
+        <Ownership view={view} />
+
         <Participation view={view} />
 
-        <section id="details" className="flex min-w-0 scroll-mt-8 flex-col gap-6">
+        <section id="details" className="flex min-w-0 scroll-mt-28 flex-col gap-6">
           <h2 className="font-serif text-3xl">Details</h2>
           <Expenses view={view} />
           <Profit view={view} />
@@ -523,23 +527,54 @@ function CompanySnapshot({ view }: { view: AccountingView }) {
 }
 
 function Ownership({ view }: { view: AccountingView }) {
+  const verified = view.ownership.filter((row) => row.status === "Verified");
+  const proposals = view.ownership.filter((row) => row.status === "Proposal");
+  const issuedUnits = verified.reduce((total, row) => total + Number(row.units.replaceAll(",", "")), 0);
   return (
-    <Card title="Ownership">
-      <ul className="mt-4 grid gap-4">
-        {view.ownership.map((row) => (
-          <li key={row.name} className="min-w-0">
+    <Panel id="ownership" title="Company Ownership & Capitalization">
+      <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink/75">
+        Only verified, legally finalized records count as current ownership. Equity grants and investment terms stay as an approved summary.
+      </p>
+      <p className="mt-5 text-xs font-medium tracking-[0.14em] text-terracotta uppercase">Total issued equity</p>
+      <p className="mt-2 font-serif text-4xl tabular-nums">{formatCount(issuedUnits)} units</p>
+      <p className="mt-1 text-sm text-ink/70">Counted from verified rows only.</p>
+
+      <h3 className="mt-8 font-medium">Current ownership</h3>
+      <ul className="mt-4 grid gap-4 sm:grid-cols-3">
+        {verified.map((row) => (
+          <li key={row.name} className="min-w-0 rounded-2xl border border-sand bg-cream/50 p-4">
             <div className="flex flex-wrap items-center gap-2">
               <p className="font-medium">{row.name}</p>
-              <Chip tone={row.status === "Proposal" ? "proposal" : "paid"}>{row.status}</Chip>
+              <Chip tone="paid">{row.status}</Chip>
             </div>
-            <p className="mt-1 text-sm text-ink/70">
-              {row.share} · {row.units} units
-            </p>
+            <p className="mt-3 font-serif text-3xl tabular-nums">{row.share}</p>
+            <p className="mt-1 text-sm text-ink/70">{row.units} units</p>
           </li>
         ))}
       </ul>
-      <p className="mt-4 text-sm leading-relaxed text-ink/60">The proposal is not added into the 1,000,000 issued units.</p>
-    </Card>
+
+      <h3 className="mt-8 font-medium">Proposals</h3>
+      {proposals.length === 0 ? (
+        <p className="mt-3 text-sm leading-relaxed text-ink/75">No ownership proposals in this sample.</p>
+      ) : (
+        <ul className="mt-4 grid gap-4">
+          {proposals.map((row) => (
+            <li key={row.name} className="min-w-0 rounded-2xl border border-sand px-4 py-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <p className="font-medium">{row.name}</p>
+                <Chip tone="proposal">{row.status}</Chip>
+              </div>
+              <p className="mt-2 text-sm text-ink/70">
+                {row.share} · {row.units} units
+              </p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/60">
+                A proposal is not current ownership and is not included in the {formatCount(issuedUnits)} issued units.
+              </p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </Panel>
   );
 }
 
@@ -905,7 +940,7 @@ function FilterButton({ pressed, onClick, children }: { pressed: boolean; onClic
       type="button"
       aria-pressed={pressed}
       onClick={onClick}
-      className={`rounded-full px-4 py-2 text-sm ${focusRing} ${pressed ? "bg-terracotta text-white" : "bg-sand text-ink"}`}
+      className={`shrink-0 rounded-full px-4 py-2 text-sm ${focusRing} ${pressed ? "bg-terracotta text-white" : "bg-sand text-ink"}`}
     >
       {children}
     </button>
