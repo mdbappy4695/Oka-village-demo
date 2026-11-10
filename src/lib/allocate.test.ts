@@ -1,214 +1,219 @@
 import { describe, expect, it } from "vitest";
-import { periodById, PERIODS, SNAPSHOT_AT, SNAPSHOT_LABEL } from "../data/sample-ledger";
 import {
   ANNUAL_PRICE_CENTS,
-  eligibleCents,
+  ANNUAL_RECOGNITION_MONTHS,
+  DRAFT_POLICY,
+  LIFETIME_PRICE_CENTS,
+  LIFETIME_RECOGNITION_MONTHS,
   MONTHLY_PRICE_CENTS,
-  resolveActivity,
+  POINT_RULES,
+  SNAPSHOT,
+  SNAPSHOT_AT,
+  SNAPSHOT_LABEL,
+  activeReferralNumerator,
+  canFollowUp,
+  canViewEarnings,
+  canViewOpenAccounting,
+  contributionPoints,
+  eligibleCents,
+  eventEarningsCents,
+  grossMembershipCents,
+  growthPercent,
+  netBalance,
+  nextPayout,
+  payoutDateForEarnedMonth,
+  presentLeaderboard,
+  recognitionSchedule,
+  resolveRange,
   splitEligible,
-  sumActivity,
-  type SubscriptionActivity,
+  type MembershipActivity,
 } from "./allocate";
 
-function month(id: "2026-09" | "2026-10" | "2026-11") {
-  const period = periodById(id);
-  if (!period) throw new Error(`Missing ${id}`);
-  return period;
-}
+const quiet: MembershipActivity = {
+  monthlyInvoices: 0,
+  annualInvoices: 0,
+  lifetimeInvoices: 0,
+  discountCents: 0,
+  refundCents: 0,
+  chargebackCents: 0,
+  taxCents: 0,
+  processingFeeCents: 0,
+};
 
-describe("draft 75/25 split", () => {
-  it("rounds half-up to the cent and gives the remainder to the platform", () => {
-    expect(splitEligible(0)).toEqual({ communityCents: 0, platformCents: 0 });
-    expect(splitEligible(1)).toEqual({ communityCents: 1, platformCents: 0 });
-    expect(splitEligible(2)).toEqual({ communityCents: 2, platformCents: 0 });
-    expect(splitEligible(3)).toEqual({ communityCents: 2, platformCents: 1 });
-    expect(splitEligible(10)).toEqual({ communityCents: 8, platformCents: 2 });
-    expect(splitEligible(100)).toEqual({ communityCents: 75, platformCents: 25 });
+describe("draft 50/25/25 split", () => {
+  it("rounds half-up and gives the remainder to the platform", () => {
+    expect(splitEligible(0)).toEqual({ referralCents: 0, contributorCents: 0, platformCents: 0 });
+    expect(splitEligible(1)).toEqual({ referralCents: 1, contributorCents: 0, platformCents: 0 });
+    expect(splitEligible(2)).toEqual({ referralCents: 1, contributorCents: 1, platformCents: 0 });
+    expect(splitEligible(10)).toEqual({ referralCents: 5, contributorCents: 3, platformCents: 2 });
+    expect(splitEligible(100)).toEqual({ referralCents: 50, contributorCents: 25, platformCents: 25 });
+  });
+
+  it("adds the three lines back to eligible revenue", () => {
+    for (const amount of [0, 1, 2, 3, 99, 209_000]) {
+      const split = splitEligible(amount);
+      expect(split.referralCents + split.contributorCents + split.platformCents).toBe(amount);
+    }
   });
 
   it("rejects a negative eligible amount", () => {
     expect(() => splitEligible(-1)).toThrow(/non-negative/);
   });
+
+  it("does not apply the planned 30 percent rate at the member threshold", () => {
+    expect(activeReferralNumerator(0)).toBe(50);
+    expect(activeReferralNumerator(DRAFT_POLICY.memberThreshold)).toBe(DRAFT_POLICY.referralNumerator);
+    expect(activeReferralNumerator(DRAFT_POLICY.memberThreshold)).not.toBe(DRAFT_POLICY.plannedReferralNumerator);
+  });
 });
 
 describe("eligible revenue", () => {
-  const base: SubscriptionActivity = {
-    monthlyInvoices: 1,
-    annualInvoices: 0,
-    discountCents: 0,
-    refundCents: 0,
-    chargebackCents: 0,
-    taxCents: 0,
-    stripeFeeCents: 0,
-  };
-
   it("uses catalog prices and leaves taxes out of the base", () => {
-    expect(eligibleCents(base)).toBe(MONTHLY_PRICE_CENTS);
-    expect(eligibleCents({ ...base, taxCents: 50_000 })).toBe(MONTHLY_PRICE_CENTS);
-    expect(eligibleCents({ ...base, annualInvoices: 1, monthlyInvoices: 0 })).toBe(ANNUAL_PRICE_CENTS);
+    expect(eligibleCents({ ...quiet, monthlyInvoices: 1 })).toBe(MONTHLY_PRICE_CENTS);
+    expect(eligibleCents({ ...quiet, monthlyInvoices: 1, taxCents: 50_000 })).toBe(MONTHLY_PRICE_CENTS);
+    expect(eligibleCents({ ...quiet, annualInvoices: 1 })).toBe(ANNUAL_PRICE_CENTS);
+    expect(eligibleCents({ ...quiet, lifetimeInvoices: 1 })).toBe(LIFETIME_PRICE_CENTS);
   });
 
-  it("subtracts discounts, refunds, chargebacks, and Stripe fees", () => {
+  it("subtracts discounts, refunds, chargebacks, and processing fees once", () => {
     expect(
       eligibleCents({
-        ...base,
+        ...quiet,
+        monthlyInvoices: 1,
         discountCents: 20,
         refundCents: 30,
         chargebackCents: 100,
-        stripeFeeCents: 50,
+        processingFeeCents: 50,
         taxCents: 999,
       }),
     ).toBe(MONTHLY_PRICE_CENTS - 20 - 30 - 100 - 50);
   });
 });
 
-describe("combined periods", () => {
-  it("splits the summed eligible revenue once", () => {
-    const first: SubscriptionActivity = {
-      monthlyInvoices: 1,
-      annualInvoices: 0,
-      discountCents: 0,
-      refundCents: 0,
-      chargebackCents: 0,
-      taxCents: 500,
-      stripeFeeCents: MONTHLY_PRICE_CENTS - 1,
-    };
-    const second: SubscriptionActivity = { ...first, stripeFeeCents: MONTHLY_PRICE_CENTS - 2, taxCents: 800 };
-    expect(eligibleCents(first)).toBe(1);
-    expect(eligibleCents(second)).toBe(2);
+describe("points and recognition", () => {
+  it("counts points from the sample config and does not turn them into cash", () => {
+    expect(POINT_RULES.convertsToCash).toBe(false);
+    expect(contributionPoints(2, 5)).toBe(2 * POINT_RULES.perHostedEvent + 5 * POINT_RULES.perVerifiedAttendee);
+    expect(eventEarningsCents(0)).toBe(0);
+    expect(eventEarningsCents(15_000)).toBe(15_000);
+  });
 
-    const combined = resolveActivity(sumActivity([first, second]));
-    expect(combined.eligibleCents).toBe(3);
-    expect(combined.taxCents).toBe(1_300);
-    expect(combined.communityCents).toBe(splitEligible(3).communityCents);
-    expect(combined.communityCents).toBe(2);
-    expect(splitEligible(1).communityCents + splitEligible(2).communityCents).toBe(3);
+  it("spreads a price across months so the slices add back", () => {
+    expect(recognitionSchedule(100, 3)).toEqual([34, 33, 33]);
+    const annual = recognitionSchedule(ANNUAL_PRICE_CENTS, ANNUAL_RECOGNITION_MONTHS);
+    const lifetime = recognitionSchedule(LIFETIME_PRICE_CENTS, LIFETIME_RECOGNITION_MONTHS);
+    expect(annual).toHaveLength(12);
+    expect(annual.reduce((sum, part) => sum + part, 0)).toBe(ANNUAL_PRICE_CENTS);
+    expect(lifetime.reduce((sum, part) => sum + part, 0)).toBe(LIFETIME_PRICE_CENTS);
+    expect(new Set(annual).size).toBe(1);
   });
 });
 
-describe("sample ledger", () => {
-  it("keeps the published snapshot time fixed", () => {
+describe("member balance and payouts", () => {
+  it("labels a positive balance as available and a negative balance as offset", () => {
+    expect(
+      netBalance({
+        approvedEarningsCents: 10_000,
+        creditsCents: 500,
+        advancesCents: 1_000,
+        deductionsCents: 200,
+        previousPayoutsCents: 4_000,
+      }),
+    ).toMatchObject({ cents: 5_300, tone: "available", title: "Available for payout" });
+
+    const offset = netBalance({
+      approvedEarningsCents: 1_000,
+      creditsCents: 0,
+      advancesCents: 4_000,
+      deductionsCents: 0,
+      previousPayoutsCents: 0,
+    });
+    expect(offset.cents).toBe(-3_000);
+    expect(offset.tone).toBe("offset");
+    expect(offset.title).toBe("Balance to offset");
+  });
+
+  it("pays a calendar month on the 20th of the following month", () => {
+    expect(payoutDateForEarnedMonth(2026, 11)).toEqual({ iso: "2026-12-20", label: "20 December 2026" });
+    expect(payoutDateForEarnedMonth(2026, 12)).toEqual({ iso: "2027-01-20", label: "20 January 2027" });
+  });
+
+  it("uses the fixed snapshot for the next payout", () => {
     expect(SNAPSHOT_AT).toBe("2026-11-08T09:40:00.000Z");
     expect(SNAPSHOT_LABEL).toBe("8 November 2026, 09:40 UTC");
+    expect(nextPayout(SNAPSHOT)).toMatchObject({
+      iso: "2026-11-20",
+      coversMonthId: "2026-10",
+      coversLabel: "October 2026",
+    });
+    expect(nextPayout({ year: 2026, month: 11, day: 20 }).coversMonthId).toBe("2026-11");
+    expect(nextPayout({ year: 2026, month: 11, day: 20 }).iso).toBe("2026-12-20");
+  });
+});
+
+describe("access and privacy", () => {
+  it("keeps Open Accounting to an active trial or a paying member", () => {
+    expect(canViewEarnings("signed-out")).toBe(false);
+    expect(canViewEarnings("lapsed")).toBe(true);
+    expect(canViewEarnings("trial")).toBe(true);
+    expect(canViewEarnings("paying")).toBe(true);
+    expect(canViewOpenAccounting("signed-out")).toBe(false);
+    expect(canViewOpenAccounting("lapsed")).toBe(false);
+    expect(canViewOpenAccounting("trial")).toBe(true);
+    expect(canViewOpenAccounting("paying")).toBe(true);
   });
 
-  it("adds October by hand from gross charges to the 75/25 split", () => {
-    const october = month("2026-10");
-    expect(october.grossCents).toBe(740_500);
-    expect(october.discountCents).toBe(8_700);
-    expect(october.refundCents).toBe(5_800);
-    expect(october.chargebackCents).toBe(0);
-    expect(october.taxCents).toBe(0);
-    expect(october.stripeFeeCents).toBe(21_400);
-    expect(october.eligibleCents).toBe(704_600);
-    expect(october.communityCents).toBe(528_450);
-    expect(october.platformCents).toBe(176_150);
-    expect(october.members.activePaying).toBe(148);
-    expect(october.members.trials).toBe(12);
-    expect(october.members.pastDue).toBe(3);
+  it("offers follow-up only before a membership is purchased", () => {
+    expect(canFollowUp("free-trial")).toBe(true);
+    expect(canFollowUp("expired-trial")).toBe(true);
+    expect(canFollowUp("active-paid")).toBe(false);
+    expect(canFollowUp("cancelled")).toBe(false);
   });
 
-  it("keeps September and November on the same formula", () => {
-    const september = month("2026-09");
-    expect(september.eligibleCents).toBe(482_400);
-    expect(september.communityCents).toBe(361_800);
-    expect(september.platformCents).toBe(120_600);
+  it("hides names and initials when a member has not opted in", () => {
+    const rows = presentLeaderboard([
+      { firstName: "Nora", optedIn: true, initials: "NO", referralCount: 4, earningsCents: 8_000 },
+      { firstName: "Jules", optedIn: false, initials: "JU", referralCount: 9, earningsCents: 20_000 },
+    ]);
+    expect(rows[0]).toMatchObject({ displayName: "Anonymous member", initials: null, named: false, earningsCents: 20_000 });
+    expect(rows[1]).toMatchObject({ displayName: "Nora", initials: "NO", named: true });
+    expect(rows.some((row) => row.displayName.includes("Jules"))).toBe(false);
+  });
+});
 
-    const november = month("2026-11");
-    expect(november.eligibleCents).toBe(229_000);
-    expect(november.communityCents).toBe(171_750);
-    expect(november.platformCents).toBe(57_250);
-    expect(november.status).toBe("open");
+describe("reporting ranges", () => {
+  it("defaults the clock to November 2026 and withholds a comparison for today", () => {
+    const today = resolveRange("today");
+    expect(today.start).toBe("2026-11-08");
+    expect(today.end).toBe("2026-11-08");
+    expect(today.previousMonthIds).toBeNull();
+    expect(growthPercent(10, null)).toBeNull();
+    expect(growthPercent(10, 0)).toBeNull();
+
+    const month = resolveRange("month");
+    expect(month.monthIds).toEqual(["2026-11"]);
+    expect(month.previousMonthIds).toEqual(["2026-10"]);
+    expect(month.start).toBe("2026-11-01");
+    expect(month.end).toBe("2026-11-30");
   });
 
-  it("builds the partial quarter from October and November money, and the latest member snapshot", () => {
-    const quarter = periodById("2026-q4");
-    const october = month("2026-10");
-    const november = month("2026-11");
-    if (!quarter) throw new Error("Missing quarter");
+  it("builds the partial quarter and the pre-income year", () => {
+    const quarter = resolveRange("quarter");
+    expect(quarter.monthIds).toEqual(["2026-10", "2026-11"]);
+    expect(quarter.previousMonthIds).toEqual(["2026-07", "2026-08", "2026-09"]);
 
-    expect(quarter.grossCents).toBe(october.grossCents + november.grossCents);
-    expect(quarter.discountCents).toBe(october.discountCents + november.discountCents);
-    expect(quarter.refundCents).toBe(october.refundCents + november.refundCents);
-    expect(quarter.chargebackCents).toBe(october.chargebackCents + november.chargebackCents);
-    expect(quarter.stripeFeeCents).toBe(october.stripeFeeCents + november.stripeFeeCents);
-    expect(quarter.taxCents).toBe(october.taxCents + november.taxCents);
-    expect(quarter.eligibleCents).toBe(october.eligibleCents + november.eligibleCents);
-    expect(quarter.communityCents + quarter.platformCents).toBe(quarter.eligibleCents);
-    expect(quarter.members.activePaying).toBe(november.members.activePaying);
-    expect(quarter.members.activeMonthly).toBe(november.members.activeMonthly);
-    expect(quarter.memberBasis).toBe("latest-snapshot");
+    const history = resolveRange("history", 2025);
+    expect(history.monthIds).toHaveLength(12);
+    expect(history.monthIds[0]).toBe("2025-01");
+    expect(history.previousMonthIds).toBeNull();
+    expect(resolveRange("year").previousMonthIds?.[0]).toBe("2025-01");
   });
+});
 
-  it("reconciles every published period to the cent", () => {
-    for (const period of PERIODS) {
-      expect(period.grossCents).toBe(
-        period.monthlyInvoices * MONTHLY_PRICE_CENTS + period.annualInvoices * ANNUAL_PRICE_CENTS,
-      );
-      expect(period.eligibleCents).toBe(
-        period.grossCents - period.discountCents - period.refundCents - period.chargebackCents - period.stripeFeeCents,
-      );
-      expect(period.communityCents + period.platformCents).toBe(period.eligibleCents);
-      expect(period.members.activePaying).toBe(period.members.activeMonthly + period.members.activeAnnual);
-      expect(period.taxCents).toBe(0);
-      expect(period.owedCents + period.paidCents + period.notYetLiabilityCents).toBe(period.communityCents);
-      expect(period.operatingCollectionsCents).toBe(period.eligibleCents + period.otherOperatingCents);
-      expect(period.totalCashReceivedCents).toBe(period.operatingCollectionsCents + period.financingCents);
-      expect(period.expenseTotalCents).toBe(
-        period.developersCents + period.operationsCents + period.marketingCents + period.contractorsCents + period.eventExpenseCents,
-      );
-      expect(period.platformRemainderCents).toBe(period.platformCents - period.expenseTotalCents);
-      expect(period.otherOperatingCents).toBe(
-        period.foundingCents + period.podCents + period.eventInflowCents + period.workshopCents + period.sponsorshipCents + period.grantCents,
-      );
-    }
-  });
-
-  it("keeps other receipts and investment out of the 75 percent base", () => {
-    const october = month("2026-10");
-    expect(october.otherOperatingCents).toBe(445_000);
-    expect(october.financingCents).toBe(500_000);
-    expect(october.operatingCollectionsCents).toBe(1_149_600);
-    expect(october.totalCashReceivedCents).toBe(1_649_600);
-    expect(october.eligibleCents).toBe(704_600);
-  });
-
-  it("splits the October community pool into owed, paid, and not yet a liability", () => {
-    const october = month("2026-10");
-    expect(october.approvedReferralCents).toBe(8_700);
-    expect(october.facilitatorApprovedCents).toBe(100_000);
-    expect(october.owedCents).toBe(108_700);
-    expect(october.paidCents).toBe(50_000);
-    expect(october.notYetLiabilityCents).toBe(369_750);
-    expect(october.ownReferralCents).toBe(290);
-    expect(october.ownReferredMonthlyInvoices).toBe(1);
-    expect(october.expenseTotalCents).toBe(123_000);
-    expect(october.platformRemainderCents).toBe(53_150);
-    expect(october.points).toBe(88);
-  });
-
-  it("leaves November's open pool unapproved and unpaid", () => {
-    const november = month("2026-11");
-    expect(november.owedCents).toBe(0);
-    expect(november.paidCents).toBe(0);
-    expect(november.notYetLiabilityCents).toBe(november.communityCents);
-    expect(november.unapprovedReferralCents).toBe(2_320);
-    expect(november.operatingCollectionsCents).toBe(254_000);
-  });
-
-  it("adds the quarter from October and November without approving November's referrals", () => {
-    const quarter = periodById("2026-q4");
-    const october = month("2026-10");
-    const november = month("2026-11");
-    if (!quarter) throw new Error("Missing quarter");
-    expect(quarter.operatingCollectionsCents).toBe(october.operatingCollectionsCents + november.operatingCollectionsCents);
-    expect(quarter.financingCents).toBe(october.financingCents + november.financingCents);
-    expect(quarter.owedCents).toBe(october.owedCents + november.owedCents);
-    expect(quarter.paidCents).toBe(october.paidCents + november.paidCents);
-    expect(quarter.notYetLiabilityCents).toBe(october.notYetLiabilityCents + november.notYetLiabilityCents);
-    expect(quarter.expenseTotalCents).toBe(october.expenseTotalCents + november.expenseTotalCents);
-    expect(quarter.approvedReferralCents).toBe(october.approvedReferralCents);
-    expect(quarter.unapprovedReferralCents).toBe(november.unapprovedReferralCents);
-    expect(quarter.ownReferralCents).toBe(290);
+describe("catalog gross", () => {
+  it("prices each membership term from the catalog", () => {
+    expect(grossMembershipCents({ monthlyInvoices: 2, annualInvoices: 1, lifetimeInvoices: 1 })).toBe(
+      2 * MONTHLY_PRICE_CENTS + ANNUAL_PRICE_CENTS + LIFETIME_PRICE_CENTS,
+    );
   });
 });

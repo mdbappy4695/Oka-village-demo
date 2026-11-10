@@ -1,9 +1,27 @@
-import { ANNUAL_PRICE_CENTS, MONTHLY_PRICE_CENTS, type MemberSnapshot } from "./allocate";
-
 const usd = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+
+const MONTH_NAMES = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+] as const;
 
 export function formatUsd(cents: number): string {
   return usd.format(cents / 100);
+}
+
+export function formatSigned(cents: number): string {
+  if (cents < 0) return `−${formatUsd(Math.abs(cents))}`;
+  return formatUsd(cents);
 }
 
 export function formatDeduction(cents: number): string {
@@ -23,18 +41,17 @@ export function formatShare(partCents: number, wholeCents: number): string {
   return fraction === 0 ? `${whole}%` : `${whole}.${fraction}%`;
 }
 
-export function grossComposition(activity: { monthlyInvoices: number; annualInvoices: number }): string {
-  const monthly = `${formatCount(activity.monthlyInvoices)} monthly ${activity.monthlyInvoices === 1 ? "invoice" : "invoices"} × ${formatUsd(MONTHLY_PRICE_CENTS)}`;
-  const annual = `${formatCount(activity.annualInvoices)} annual ${activity.annualInvoices === 1 ? "invoice" : "invoices"} × ${formatUsd(ANNUAL_PRICE_CENTS)}`;
-  return `${monthly} and ${annual}.`;
+export function formatIsoDate(iso: string): string {
+  const [year, month, day] = iso.slice(0, 10).split("-").map(Number);
+  if (!year || !month || !day) return iso;
+  return `${day} ${MONTH_NAMES[month - 1]} ${year}`;
 }
 
-export function catalogAdjustmentNote(count: number): string | undefined {
-  if (count === 0) return undefined;
-  const noun = count === 1 ? "monthly membership" : "monthly memberships";
-  return `${formatCount(count)} ${noun} at ${formatUsd(MONTHLY_PRICE_CENTS)}.`;
-}
-
-export function memberAside(snapshot: MemberSnapshot & { activePaying: number }): string {
-  return `${formatCount(snapshot.activeMonthly)} monthly · ${formatCount(snapshot.activeAnnual)} annual · ${formatCount(snapshot.trials)} on trial · ${formatCount(snapshot.pastDue)} past due`;
+export function formatGrowth(percent: number | null): string | null {
+  if (percent === null) return null;
+  const absolute = Math.abs(percent);
+  const text = Number.isInteger(absolute) ? absolute.toFixed(0) : absolute.toFixed(1);
+  if (percent > 0) return `+${text}%`;
+  if (percent < 0) return `−${text}%`;
+  return "0%";
 }

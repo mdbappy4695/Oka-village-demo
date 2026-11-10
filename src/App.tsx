@@ -1,15 +1,27 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { DemoBar } from "./components/DemoBar";
-import { Shell } from "./components/Shell";
 import { DemoProvider, useDemo } from "./demo/DemoContext";
-import { Contributions, Earnings, Finances, History } from "./pages/Details";
+import { canViewEarnings, canViewOpenAccounting } from "./lib/allocate";
+import { Earnings } from "./pages/Earnings";
 import { Gate } from "./pages/Gate";
-import { Methodology } from "./pages/Methodology";
-import { Overview } from "./pages/Overview";
+import { Home } from "./pages/Home";
+import { OpenAccounting } from "./pages/OpenAccounting";
 
-function RequireMember() {
-  const { member } = useDemo();
-  if (!member) return <Navigate to="/" replace />;
+function Root() {
+  const { role } = useDemo();
+  if (role === "signed-out") return <Gate />;
+  return <Home />;
+}
+
+function RequireEarnings() {
+  const { role } = useDemo();
+  if (!canViewEarnings(role)) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
+function RequireAccounting() {
+  const { role } = useDemo();
+  if (!canViewOpenAccounting(role)) return <Navigate to="/" replace />;
   return <Outlet />;
 }
 
@@ -18,16 +30,12 @@ export function App() {
     <BrowserRouter>
       <DemoProvider>
         <Routes>
-          <Route path="/" element={<Gate />} />
-          <Route element={<RequireMember />}>
-            <Route path="/open-accounting" element={<Shell />}>
-              <Route index element={<Overview />} />
-              <Route path="methodology" element={<Methodology />} />
-              <Route path="earnings" element={<Earnings />} />
-              <Route path="contributions" element={<Contributions />} />
-              <Route path="history" element={<History />} />
-              <Route path="finances" element={<Finances />} />
-            </Route>
+          <Route path="/" element={<Root />} />
+          <Route element={<RequireEarnings />}>
+            <Route path="/earnings" element={<Earnings />} />
+          </Route>
+          <Route element={<RequireAccounting />}>
+            <Route path="/open-accounting" element={<OpenAccounting />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

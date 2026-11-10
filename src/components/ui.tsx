@@ -11,6 +11,7 @@ const chipTones = {
   excluded: "bg-sage-light text-ink",
   owed: "bg-sand text-ink",
   paid: "bg-sage-light text-ink",
+  proposal: "bg-golden/40 text-ink",
 } as const;
 
 export function Chip({
@@ -29,4 +30,26 @@ export function Chip({
 
 export function Eyebrow({ children }: { children: ReactNode }) {
   return <p className="text-xs font-medium tracking-[0.22em] text-terracotta uppercase">{children}</p>;
+}
+
+export function Panel({
+  id,
+  title,
+  children,
+  extra,
+}: {
+  id?: string;
+  title: string;
+  children: ReactNode;
+  extra?: ReactNode;
+}) {
+  return (
+    <section id={id} className="scroll-mt-24 min-w-0 max-w-full rounded-2xl border border-sand bg-card p-5 shadow-[0_18px_40px_-28px_rgba(55,44,36,0.45)] sm:p-7">
+      <div className="flex flex-wrap items-center gap-2">
+        <h2 className="font-serif text-3xl">{title}</h2>
+        {extra}
+      </div>
+      {children}
+    </section>
+  );
 }
