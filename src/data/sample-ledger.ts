@@ -730,7 +730,6 @@ export const OWNERSHIP = [
   { name: "Founding members", share: "70%", units: "700,000", status: "Verified" as const },
   { name: "Investor equity", share: "20%", units: "200,000", status: "Verified" as const },
   { name: "Reserved for employees and incentives", share: "10%", units: "100,000", status: "Verified" as const },
-  { name: "Additional option pool", share: "5% of a larger total", units: "50,000", status: "Proposal" as const },
 ];
 
 export const DIVIDENDS: { id: string; cents: number }[] = [];

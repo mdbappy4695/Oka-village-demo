@@ -47,17 +47,11 @@ export function OpenAccounting() {
     <Frame wide>
       <div className="flex min-w-0 flex-col gap-6 pb-8">
         <header className="flex flex-col gap-5">
-          <div className="flex flex-wrap items-end justify-between gap-4">
-            <div>
-              <p className="text-xs font-medium tracking-[0.22em] text-terracotta uppercase">One World Family</p>
-              <h1 className="mt-2 font-serif text-5xl">Open Accounting</h1>
-              <p className="mt-2 max-w-xl text-lg leading-relaxed text-ink/80">
-                See how our community grows, creates value, and shares its prosperity. <Kaomoji>(˘︶˘)☆</Kaomoji>
-              </p>
-            </div>
-            <p className="text-sm text-ink/70">
-              Last updated
-              <span className="mt-1 block font-medium text-ink">{view.updatedLabel}</span>
+          <div>
+            <p className="text-xs font-medium tracking-[0.22em] text-terracotta uppercase">One World Family</p>
+            <h1 className="mt-2 font-serif text-5xl">Open Accounting</h1>
+            <p className="mt-2 max-w-xl text-lg leading-relaxed text-ink/80">
+              See how our community grows, creates value, and shares its prosperity. <Kaomoji>(˘︶˘)☆</Kaomoji>
             </p>
           </div>
           <p className="text-sm leading-relaxed text-ink/60">
@@ -529,7 +523,6 @@ function CompanySnapshot({ view }: { view: AccountingView }) {
 
 function Ownership({ view }: { view: AccountingView }) {
   const verified = view.ownership.filter((row) => row.status === "Verified");
-  const proposals = view.ownership.filter((row) => row.status === "Proposal");
   const issuedUnits = verified.reduce((total, row) => total + Number(row.units.replaceAll(",", "")), 0);
   return (
     <Panel id="ownership" title="Company Ownership & Capitalization">
@@ -553,30 +546,6 @@ function Ownership({ view }: { view: AccountingView }) {
           </li>
         ))}
       </ul>
-
-      <h3 className="mt-8 font-medium">Proposals</h3>
-      {proposals.length === 0 ? (
-        <p className="mt-3 text-sm leading-relaxed text-ink/75">
-          No ownership proposals in this period. <Kaomoji>(˘ー˘)｡</Kaomoji>
-        </p>
-      ) : (
-        <ul className="mt-4 grid gap-4">
-          {proposals.map((row) => (
-            <li key={row.name} className="min-w-0 rounded-2xl border border-sand px-4 py-4">
-              <div className="flex flex-wrap items-center gap-2">
-                <p className="font-medium">{row.name}</p>
-                <Chip tone="proposal">{row.status}</Chip>
-              </div>
-              <p className="mt-2 text-sm text-ink/70">
-                {row.share} · {row.units} units
-              </p>
-              <p className="mt-2 text-sm leading-relaxed text-ink/60">
-                A proposal is not current ownership and is not included in the {formatCount(issuedUnits)} issued units.
-              </p>
-            </li>
-          ))}
-        </ul>
-      )}
     </Panel>
   );
 }
