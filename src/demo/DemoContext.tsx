@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { canViewEarnings, canViewOpenAccounting, type AccessRole } from "../lib/allocate";
+import { canViewAdmin, canViewEarnings, canViewOpenAccounting, type AccessRole } from "../lib/allocate";
 
 const ROLE_KEY = "owf-demo-role";
 const FRESH_KEY = "owf-demo-freshness";
@@ -18,7 +18,7 @@ const DemoContext = createContext<DemoContextValue | null>(null);
 
 function readRole(): AccessRole {
   const stored = sessionStorage.getItem(ROLE_KEY);
-  if (stored === "lapsed" || stored === "trial" || stored === "paying" || stored === "signed-out") return stored;
+  if (stored === "lapsed" || stored === "trial" || stored === "paying" || stored === "admin" || stored === "signed-out") return stored;
   return "signed-out";
 }
 
@@ -39,8 +39,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
       sessionStorage.setItem(ROLE_KEY, next);
       setRoleState(next);
       if (next === "signed-out") navigate("/");
+      else if (pathname.startsWith("/admin") && !canViewAdmin(next)) navigate("/");
       else if (pathname.startsWith("/open-accounting") && !canViewOpenAccounting(next)) navigate("/");
       else if (pathname.startsWith("/earnings") && !canViewEarnings(next)) navigate("/");
+      else if (next === "admin" && (pathname === "/" || pathname === "/earnings")) navigate("/admin");
     },
     setFreshness: (next) => {
       sessionStorage.setItem(FRESH_KEY, next);

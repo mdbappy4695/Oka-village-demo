@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { Frame } from "../components/Frame";
-import { Bars, Donut, Lines, chartColors } from "../components/charts";
-import { Chip, Panel, focusRing } from "../components/ui";
+import { Bars, Lines, chartColors } from "../components/charts";
+import { Chip, Kaomoji, Panel, focusRing } from "../components/ui";
 import { useDemo } from "../demo/DemoContext";
 import { buildMemberAccount, memberMonth, memberMonthIds, spanFor } from "../data/views";
 import { FOLLOW_UP_MESSAGE } from "../data/sample-ledger";
 import { POINT_RULES, canFollowUp, statusLabel } from "../lib/allocate";
-import { formatCount, formatIsoDate, formatShare, formatSigned, formatUsd } from "../lib/format";
+import { formatCount, formatIsoDate, formatSigned, formatUsd } from "../lib/format";
 
 const account = buildMemberAccount();
 const monthIds = memberMonthIds();
@@ -18,6 +18,7 @@ export function Earnings() {
   const [grain, setGrain] = useState<"month" | "quarter" | "year">("month");
   const [followUpId, setFollowUpId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [paymentOpen, setPaymentOpen] = useState(false);
   const month = memberMonth(monthId);
   const index = monthIds.indexOf(monthId);
   const span = spanFor(monthId, grain);
@@ -35,7 +36,7 @@ export function Earnings() {
   const followUp = account.invites.find((invite) => invite.id === followUpId) ?? null;
 
   useEffect(() => {
-    document.title = "Earnings · One World Family";
+    document.title = "My Earnings · One World Family";
   }, []);
 
   async function copyLink() {
@@ -57,51 +58,55 @@ export function Earnings() {
     <Frame>
       <div className="flex min-w-0 flex-col gap-8 pb-6">
         <header>
-          <div className="flex flex-wrap gap-2">
-            <Chip tone="sample">Sample</Chip>
-            {stale && <Chip tone="stale">Stale</Chip>}
-          </div>
-          <h1 className="mt-3 font-serif text-5xl">Earnings</h1>
+          {stale && (
+            <div className="flex flex-wrap gap-2">
+              <Chip tone="stale">Stale</Chip>
+            </div>
+          )}
+          <h1 className={stale ? "mt-3 font-serif text-5xl" : "font-serif text-5xl"}>My Earnings</h1>
           <p className="mt-3 max-w-2xl text-lg leading-relaxed text-ink/80">
-            Only Avery’s invitations, points, and payments. No other member’s balance is on this page.
+            Only Avery’s invitations, points, and payments. No other member’s balance is on this page.{" "}
+            <Kaomoji>(˘ー˘)｡</Kaomoji>
           </p>
         </header>
 
-        <Panel title="Your invitation link" extra={stale ? <Chip tone="stale">Stale</Chip> : undefined}>
-          <p className="mt-3 text-sm leading-relaxed text-ink/75">The same personal link as before. Attribution in this sample is unchanged.</p>
-          <div className="mt-4 flex flex-col gap-3 sm:flex-row">
-            <input
-              readOnly
-              value={account.affiliateUrl}
-              aria-label="Personal affiliate link"
-              className="min-w-0 flex-1 rounded-full border border-sand bg-cream px-4 py-3 text-sm"
-            />
-            <button type="button" className={`rounded-full bg-terracotta px-5 py-3 text-sm font-medium text-white ${focusRing}`} onClick={copyLink}>
-              {copied ? "Copied" : "Copy link"}
-            </button>
-          </div>
-        </Panel>
+        <div className="grid gap-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)]">
+          <Panel title="Your invitation link" extra={stale ? <Chip tone="stale">Stale</Chip> : <Kaomoji>(˘︶˘)☆</Kaomoji>}>
+            <p className="mt-3 text-sm leading-relaxed text-ink/75">Share this personal link. Attribution stays with you.</p>
+            <div className="mt-4 flex flex-col gap-3 sm:flex-row">
+              <input
+                readOnly
+                value={account.affiliateUrl}
+                aria-label="Personal affiliate link"
+                className="min-w-0 flex-1 rounded-full border border-sand bg-cream px-4 py-3 text-sm"
+              />
+              <button type="button" className={`rounded-full bg-terracotta px-5 py-3 text-sm font-medium text-white ${focusRing}`} onClick={copyLink}>
+                {copied ? "Copied" : "Copy link"}
+              </button>
+            </div>
+          </Panel>
+          <article className="rounded-2xl border border-sand bg-card p-5 shadow-[0_18px_40px_-28px_rgba(55,44,36,0.45)] sm:p-7">
+            <p className="text-xs font-medium tracking-[0.14em] text-terracotta uppercase">{account.balance.title}</p>
+            <p className="mt-3 font-serif text-5xl tabular-nums">{formatUsd(Math.abs(account.balance.cents))}</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink/70">
+              {account.balance.tone === "offset"
+                ? "This offsets future earnings. It is not a demand for immediate cash."
+                : "After deductions and previous payouts. Subject to the payout schedule."}
+            </p>
+            <p className="mt-4 text-sm text-ink/70">Next payout {account.nextPayout.label}</p>
+          </article>
+        </div>
 
         <section>
           <div className="flex flex-wrap items-end justify-between gap-3">
-            <h2 className="font-serif text-3xl">All sample earnings</h2>
-            <p className="text-sm text-ink/70">Next payout {account.nextPayout.label}</p>
+            <h2 className="font-serif text-3xl">Your earnings</h2>
+            <p className="text-sm text-ink/70">Figures for this member account</p>
           </div>
-          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <div className="mt-4 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Metric label="Total earned" value={formatUsd(account.earnedCents)} note="Approved referral and contribution earnings." stale={stale} />
             <Metric label="Referral earnings" value={formatUsd(account.referralCents)} note="Approved credits from people you invited." stale={stale} />
-            <Metric label="Contribution earnings" value={formatUsd(account.contributionCents)} note="Approved event earnings. Points are not included." stale={stale} />
+            <Metric label="Contribution earnings" value={formatUsd(account.contributionCents)} note="Approved event earnings. Points convert monthly." stale={stale} />
             <Metric label="Adjustments and advances" value={formatSigned(account.adjustmentCents)} note="Credits, minus advances and deductions." stale={stale} />
-            <Metric
-              label={account.balance.title}
-              value={formatUsd(Math.abs(account.balance.cents))}
-              note={
-                account.balance.tone === "offset"
-                  ? "This offsets future earnings. It is not a demand for immediate cash."
-                  : "After deductions and previous payouts. Subject to the payout schedule."
-              }
-              stale={stale}
-            />
           </div>
         </section>
 
@@ -122,31 +127,11 @@ export function Earnings() {
           />
         </Panel>
 
-        <Panel title={`Earnings comparison · ${month.label}`} extra={<Chip tone="estimated">Approved only</Chip>}>
-          <Donut
-            slices={[
-              { name: "Referral earnings", cents: month.earnedCents, color: chartColors.terracotta },
-              { name: "Contribution earnings", cents: spanEarningsFor(monthId), color: chartColors.sage },
-            ].filter((slice) => slice.cents > 0)}
-            center={formatUsd(month.earnedCents + spanEarningsFor(monthId))}
-            label={`Approved earnings for ${month.label}`}
-            empty="No approved referral or contribution earnings in this month, so there is no split to draw. Pending amounts stay off this chart."
-          />
-          {month.earnedCents + spanEarningsFor(monthId) > 0 && (
-            <ul className="mt-2 grid gap-3 sm:grid-cols-2">
-              <Legend color={chartColors.terracotta} title="Referral earnings" amount={month.earnedCents} whole={month.earnedCents + spanEarningsFor(monthId)} />
-              <Legend color={chartColors.sage} title="Contribution earnings" amount={spanEarningsFor(monthId)} whole={month.earnedCents + spanEarningsFor(monthId)} />
-            </ul>
-          )}
-          <p className="mt-4 font-serif text-3xl">Total for {month.label}</p>
-          <p className="mt-1 text-sm text-ink/70">{formatUsd(month.earnedCents + spanEarningsFor(monthId))} approved. The five figures above cover every sample month.</p>
-        </Panel>
-
         <Panel title="Referral performance" extra={<Chip tone="period">{month.label}</Chip>}>
           <div className="mt-4 flex flex-wrap items-center gap-2">
             <button
               type="button"
-              className={`rounded-full bg-sand px-4 py-2 text-sm disabled:opacity-40 ${focusRing}`}
+              className={`rounded-full bg-sage px-4 py-2 text-sm text-cream disabled:opacity-40 ${focusRing}`}
               disabled={index <= 0}
               onClick={() => setMonthId(monthIds[index - 1]!)}
             >
@@ -155,7 +140,7 @@ export function Earnings() {
             <p className="px-2 font-medium">{month.label}</p>
             <button
               type="button"
-              className={`rounded-full bg-sand px-4 py-2 text-sm disabled:opacity-40 ${focusRing}`}
+              className={`rounded-full bg-sage px-4 py-2 text-sm text-cream disabled:opacity-40 ${focusRing}`}
               disabled={index >= monthIds.length - 1}
               onClick={() => setMonthId(monthIds[index + 1]!)}
             >
@@ -174,7 +159,8 @@ export function Earnings() {
           </dl>
           {month.pendingCents > 0 && (
             <p className="mt-4 text-sm leading-relaxed text-ink/75">
-              <Chip tone="estimated">Estimated</Chip> {formatUsd(month.pendingCents)} is calculated and not yet approved.
+              <Chip tone="estimated">Estimated</Chip> {formatUsd(month.pendingCents)} is calculated and not yet approved.{" "}
+              <Kaomoji>(˘ー˘)｡</Kaomoji>
             </p>
           )}
           <h3 className="mt-6 font-medium">New invitations each month</h3>
@@ -198,7 +184,8 @@ export function Earnings() {
 
         <Panel title="People you invited">
           <p className="mt-3 text-sm leading-relaxed text-ink/75">
-            First names only. Follow-up never reveals an email address or a phone number, and it closes once someone has purchased a membership.
+            First names only. Follow-up never reveals an email address or a phone number, and it closes once someone has purchased a membership.{" "}
+            <Kaomoji>(˘ー˘)｡</Kaomoji>
           </p>
           <div className="mt-4 max-w-full overflow-x-auto">
             <table className="w-full min-w-[880px] text-left text-sm">
@@ -261,8 +248,9 @@ export function Earnings() {
             contribute to the community, and eligible activity can earn points toward the contributor reward pool.
           </p>
           <p className="mt-3 text-sm leading-relaxed text-ink/75">
-            For this sample, only events hosted on the platform earn points: {POINT_RULES.perHostedEvent} per event and {POINT_RULES.perVerifiedAttendee}{" "}
-            per verified attendee. That setting can change. Points are not cash, and hosting an event does not by itself promise a payout.
+            Points stay visible here, and approved dollars appear after conversion. Points from the prior 30 days convert on the 1st of every month, then become
+            available for payout on the 1st of the following month. Only events hosted on the platform earn points: {POINT_RULES.perHostedEvent}{" "}
+            per event and {POINT_RULES.perVerifiedAttendee} per verified attendee.
           </p>
           <div className="mt-4 flex flex-wrap gap-2" role="group" aria-label="Contribution period">
             {(["month", "quarter", "year"] as const).map((option) => (
@@ -309,7 +297,7 @@ export function Earnings() {
                 {spanEvents.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-4 text-ink/70">
-                      No hosted events in this {grain}.
+                      No hosted events in this {grain}. <Kaomoji>(˘ー˘)｡</Kaomoji>
                     </td>
                   </tr>
                 )}
@@ -383,8 +371,32 @@ export function Earnings() {
             <Stat label="Pending approval" value={formatUsd(account.pendingCents)} />
             <Stat label="Available payout" value={formatUsd(Math.max(account.balance.cents, 0))} />
             <Stat label="Already paid" value={formatUsd(account.paidCents)} />
-            <Stat label="Payment method" value={account.paymentMethod} />
+            <div>
+              <dt className="text-xs font-medium tracking-[0.12em] text-ink/60 uppercase">Payment method</dt>
+              <dd className="mt-2">
+                <button
+                  type="button"
+                  className={`rounded-full border border-sand bg-cream px-4 py-2 text-left text-sm ${focusRing}`}
+                  onClick={() => setPaymentOpen((open) => !open)}
+                  aria-expanded={paymentOpen}
+                >
+                  {account.paymentMethod}
+                  <span className="mt-1 block text-ink/60">{paymentOpen ? "Close" : "Add or change payout method"}</span>
+                </button>
+              </dd>
+            </div>
           </dl>
+          {paymentOpen && (
+            <div className="mt-4 rounded-2xl bg-sand/70 p-4" role="dialog" aria-label="Add or change payout method">
+              <p className="font-medium">Add or change payout method</p>
+              <p className="mt-2 text-sm leading-relaxed text-ink/75">
+                This opens the profile form for a bank transfer or another approved payout method. Account numbers stay hidden.
+              </p>
+              <button type="button" className={`mt-3 rounded-full bg-ink px-4 py-2 text-sm text-cream ${focusRing}`} onClick={() => setPaymentOpen(false)}>
+                Close
+              </button>
+            </div>
+          )}
           <div className="mt-4 max-w-full overflow-x-auto">
             <table className="w-full min-w-[640px] text-left text-sm">
               <thead className="text-xs tracking-[0.12em] text-terracotta uppercase">
@@ -420,10 +432,6 @@ export function Earnings() {
   );
 }
 
-function spanEarningsFor(monthId: string): number {
-  return account.events.filter((event) => event.date.slice(0, 7) === monthId).reduce((total, event) => total + event.earningsCents, 0);
-}
-
 function Metric({ label, value, note, stale }: { label: string; value: string; note: string; stale: boolean }) {
   return (
     <article className="rounded-2xl border border-sand bg-card p-5">
@@ -452,18 +460,5 @@ function Line({ label, value }: { label: string; value: string }) {
       <dt>{label}</dt>
       <dd className="font-serif text-2xl tabular-nums">{value}</dd>
     </div>
-  );
-}
-
-function Legend({ color, title, amount, whole }: { color: string; title: string; amount: number; whole: number }) {
-  return (
-    <li className="flex items-start gap-3 text-sm">
-      <span className="mt-1 size-3 shrink-0 rounded-full" style={{ background: color }} />
-      <span>
-        <span className="block font-medium">
-          {title} · {formatShare(amount, whole)} · {formatUsd(amount)}
-        </span>
-      </span>
-    </li>
   );
 }

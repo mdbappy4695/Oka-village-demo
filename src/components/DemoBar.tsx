@@ -7,6 +7,7 @@ const roles: { id: AccessRole; label: string }[] = [
   { id: "lapsed", label: "Lapsed member" },
   { id: "trial", label: "Active trial" },
   { id: "paying", label: "Paying member" },
+  { id: "admin", label: "Admin" },
 ];
 
 export function DemoBar() {

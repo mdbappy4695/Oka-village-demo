@@ -1,16 +1,19 @@
 import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { DemoBar } from "./components/DemoBar";
 import { DemoProvider, useDemo } from "./demo/DemoContext";
-import { canViewEarnings, canViewOpenAccounting } from "./lib/allocate";
+import { canViewAdmin, canViewEarnings, canViewOpenAccounting } from "./lib/allocate";
+import { Admin } from "./pages/Admin";
 import { Earnings } from "./pages/Earnings";
 import { Gate } from "./pages/Gate";
-import { Home } from "./pages/Home";
 import { OpenAccounting } from "./pages/OpenAccounting";
 
 function Root() {
   const { role } = useDemo();
   if (role === "signed-out") return <Gate />;
-  return <Home />;
+  if (canViewAdmin(role)) return <Navigate to="/admin" replace />;
+  if (canViewOpenAccounting(role)) return <Navigate to="/open-accounting" replace />;
+  if (canViewEarnings(role)) return <Navigate to="/earnings" replace />;
+  return <Gate />;
 }
 
 function RequireEarnings() {
@@ -25,6 +28,12 @@ function RequireAccounting() {
   return <Outlet />;
 }
 
+function RequireAdmin() {
+  const { role } = useDemo();
+  if (!canViewAdmin(role)) return <Navigate to="/" replace />;
+  return <Outlet />;
+}
+
 export function App() {
   return (
     <BrowserRouter>
@@ -36,6 +45,9 @@ export function App() {
           </Route>
           <Route element={<RequireAccounting />}>
             <Route path="/open-accounting" element={<OpenAccounting />} />
+          </Route>
+          <Route element={<RequireAdmin />}>
+            <Route path="/admin" element={<Admin />} />
           </Route>
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>

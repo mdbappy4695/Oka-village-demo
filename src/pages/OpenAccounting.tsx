@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Frame } from "../components/Frame";
-import { Bars, Donut, Lines, chartColors } from "../components/charts";
-import { Chip, Panel, focusRing } from "../components/ui";
+import { Bars, Donut, chartColors } from "../components/charts";
+import { Chip, Kaomoji, Panel, focusRing } from "../components/ui";
 import { useDemo } from "../demo/DemoContext";
 import { HISTORY_YEARS } from "../data/sample-ledger";
 import { buildAccounting, type AccountingView, type LedgerRow } from "../data/views";
@@ -51,14 +51,19 @@ export function OpenAccounting() {
             <div>
               <p className="text-xs font-medium tracking-[0.22em] text-terracotta uppercase">One World Family</p>
               <h1 className="mt-2 font-serif text-5xl">Open Accounting</h1>
-              <p className="mt-2 max-w-xl text-lg leading-relaxed text-ink/80">See how our community grows, creates value, and shares its prosperity.</p>
+              <p className="mt-2 max-w-xl text-lg leading-relaxed text-ink/80">
+                See how our community grows, creates value, and shares its prosperity. <Kaomoji>(˘︶˘)☆</Kaomoji>
+              </p>
             </div>
             <p className="text-sm text-ink/70">
               Last updated
               <span className="mt-1 block font-medium text-ink">{view.updatedLabel}</span>
             </p>
           </div>
-          <p className="text-sm leading-relaxed text-ink/60">An active trial or a paying member can open this page. In the product, the server enforces that rule.</p>
+          <p className="text-sm leading-relaxed text-ink/60">
+            An active trial or a paying member can open this page. In the product, the server enforces that rule.{" "}
+            <Kaomoji>╰(´︶`)╯♡</Kaomoji>
+          </p>
         </header>
 
         <div className="sticky top-0 z-30 -mx-5 border-b border-sand bg-cream/95 px-5 py-3 backdrop-blur">
@@ -92,7 +97,7 @@ export function OpenAccounting() {
           </div>
         </div>
 
-        <Metrics view={view} stale={stale} />
+        <Overview view={view} stale={stale} />
 
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="min-w-0 lg:col-span-2">
@@ -116,8 +121,6 @@ export function OpenAccounting() {
           <CompanySnapshot view={view} />
           <Distributions view={view} />
         </div>
-
-        <Results view={view} />
 
         <Ownership view={view} />
 
@@ -161,67 +164,78 @@ function Card({ title, extra, children }: { title: string; extra?: ReactNode; ch
   );
 }
 
-function Metrics({ view, stale }: { view: AccountingView; stale: boolean }) {
+function Overview({ view, stale }: { view: AccountingView; stale: boolean }) {
   const membershipCash = view.flow.monthlyCashCents + view.flow.annualCashCents + view.flow.lifetimeCashCents;
-  const cards: { label: string; value: string; note: string; paid?: number; growth: number | null }[] = [
+  const glance = [
+    { name: "Membership income", cents: membershipCash, color: chartColors.terracotta },
+    { name: "Referral", cents: view.allocation.referralCents, color: chartColors.sage },
+    { name: "Contributor", cents: view.allocation.contributorCents, color: chartColors.golden },
+    { name: "Platform", cents: view.allocation.platformCents, color: chartColors.sand },
+    { name: "Expenses", cents: view.operatingCents, color: chartColors.ink },
+  ];
+  const kpis: { label: string; value: string; paid?: number; growth: number | null }[] = [
+    { label: "Membership income", value: formatUsd(membershipCash), growth: null },
     {
-      label: "Total membership income",
-      value: formatUsd(membershipCash),
-      note: "Cash collected from memberships. This is not the base of the allocation chart.",
-      growth: null,
-    },
-    {
-      label: "Total referral rewards allocated",
+      label: "Referral allocated",
       value: formatUsd(view.allocation.referralCents),
-      note: `${DRAFT_POLICY.referralNumerator}% of eligible membership revenue.`,
       paid: view.flow.referralPaidCents,
       growth: view.moneyGrowth.referral,
     },
     {
-      label: "Total contributor rewards allocated",
+      label: "Contributor allocated",
       value: formatUsd(view.allocation.contributorCents),
-      note: `${DRAFT_POLICY.contributorNumerator}% under the draft rule for this period.`,
       paid: view.flow.contributorPaidCents,
       growth: view.moneyGrowth.contributor,
     },
-    {
-      label: "Total platform allocation",
-      value: formatUsd(view.allocation.platformCents),
-      note: "The remainder. Retained in the sample, not a member payout.",
-      growth: view.moneyGrowth.platform,
-    },
-    {
-      label: "Total operating expenses",
-      value: formatUsd(view.operatingCents),
-      note: "Costs of running the sample. Processing fees and refunds are already in the revenue bridge.",
-      growth: view.moneyGrowth.expenses,
-    },
-    {
-      label: "Net financial result",
-      value: formatSigned(view.performance.netCents),
-      note: "Recognized revenue after costs. The split is not deducted again.",
-      growth: view.moneyGrowth.net,
-    },
+    { label: "Platform allocation", value: formatUsd(view.allocation.platformCents), growth: view.moneyGrowth.platform },
+    { label: "Operating expenses", value: formatUsd(view.operatingCents), growth: view.moneyGrowth.expenses },
   ];
+
   return (
-    <div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
-      {cards.map((card) => (
-        <article key={card.label} className="min-w-0 rounded-2xl border border-sand bg-card p-5">
-          <div className="flex flex-wrap items-center gap-2">
-            <h2 className="text-xs font-medium tracking-[0.14em] text-terracotta uppercase">{card.label}</h2>
-            {stale && <Chip tone="stale">Stale</Chip>}
+    <Card title="Overview">
+      <p className="mt-2 text-sm leading-relaxed text-ink/70">
+        Membership cash, share pools, and expenses for {view.range.label}.
+      </p>
+      <div className="mt-4 min-w-0">
+        <p className="text-xs font-medium tracking-[0.14em] text-terracotta uppercase">Money at a glance</p>
+        <div className="mt-2 grid items-center gap-6 sm:grid-cols-[minmax(0,16rem)_minmax(0,1fr)]">
+          <Donut
+            slices={glance}
+            center={formatUsd(membershipCash)}
+            label="Money at a glance for this range"
+            empty="No money movement in this range."
+          />
+          <ul className="flex flex-col gap-3" aria-label="Money at a glance amounts">
+            {glance.map((slice) => (
+              <li key={slice.name} className="flex min-w-0 items-baseline justify-between gap-4 text-sm">
+                <span className="flex min-w-0 items-center gap-2 text-ink/80">
+                  <span className="size-3 shrink-0 rounded-full" style={{ background: slice.color }} />
+                  <span className="truncate">{slice.name}</span>
+                </span>
+                <span className="shrink-0 font-medium tabular-nums text-ink">{formatUsd(slice.cents)}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+      <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+        {kpis.map((kpi) => (
+          <div key={kpi.label} className="min-w-0 rounded-2xl border border-sand bg-cream/60 px-4 py-3">
+            <div className="flex flex-wrap items-center gap-2">
+              <p className="text-xs font-medium tracking-[0.12em] text-ink/60 uppercase">{kpi.label}</p>
+              {stale && <Chip tone="stale">Stale</Chip>}
+            </div>
+            <p className="mt-2 font-serif text-2xl tabular-nums">{kpi.value}</p>
+            {kpi.paid !== undefined && <p className="mt-1 text-xs text-ink/65">Paid {formatUsd(kpi.paid)}</p>}
+            {kpi.growth !== null && view.range.compareLabel && (
+              <p className="mt-1 text-xs text-ink/65">
+                <Delta value={kpi.growth} /> vs {view.range.compareLabel}
+              </p>
+            )}
           </div>
-          <p className="mt-3 font-serif text-3xl tabular-nums">{card.value}</p>
-          {card.paid !== undefined && <p className="mt-1 text-sm text-ink/70">Paid {formatUsd(card.paid)}</p>}
-          <p className="mt-2 text-sm leading-relaxed text-ink/70">{card.note}</p>
-          {card.growth !== null && view.range.compareLabel && (
-            <p className="mt-3 text-sm text-ink/70">
-              <Delta value={card.growth} /> vs {view.range.compareLabel}
-            </p>
-          )}
-        </article>
-      ))}
-    </div>
+        ))}
+      </div>
+    </Card>
   );
 }
 
@@ -233,7 +247,15 @@ function Allocation({ view }: { view: AccountingView }) {
     { name: `${platformShare}% — Platform allocation`, cents: view.allocation.platformCents, color: chartColors.golden },
   ];
   return (
-    <Card title="Allocation" extra={<Chip tone="estimated">Estimated</Chip>}>
+    <Card
+      title="Allocation"
+      extra={
+        <span className="inline-flex flex-wrap items-center gap-2">
+          <Chip tone="estimated">Estimated</Chip>
+          <Kaomoji>(˘ー˘)｡</Kaomoji>
+        </span>
+      }
+    >
       <Donut
         slices={slices}
         center={formatUsd(view.flow.eligibleCents)}
@@ -297,7 +319,7 @@ function Growth({ view, metric, onMetric }: { view: AccountingView; metric: Grow
         <Bars data={data} name={selected.label} color={chartColors.terracotta} money={selected.money} label={`${selected.label} for the selected range`} />
       )}
       <p className="mt-3 text-sm leading-relaxed text-ink/70">{view.runway.note}</p>
-      {view.runway.months !== null && <p className="mt-1 text-sm text-ink/70">{view.runway.months} months of sample cash.</p>}
+      {view.runway.months !== null && <p className="mt-1 text-sm text-ink/70">{view.runway.months} months of cash.</p>}
     </Card>
   );
 }
@@ -312,12 +334,11 @@ function Glance({ view }: { view: AccountingView }) {
     { label: "Events created", value: formatCount(view.community.eventsCreated), growth: view.community.growth.eventsCreated },
     { label: "Events completed", value: formatCount(view.community.eventsCompleted), growth: null },
     { label: "Credits issued", value: formatCount(view.community.creditsIssued), growth: null },
-    { label: "Credits outstanding", value: formatCount(view.community.creditsOutstanding), growth: null },
     { label: "Referral earners", value: formatCount(view.community.referralEarners), growth: null },
     { label: "Contribution earners", value: formatCount(view.community.contributionEarners), growth: null },
   ];
   return (
-    <Card title="Community">
+    <Card title="Community" extra={<Kaomoji>(˘︶˘)☆</Kaomoji>}>
       <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-5 sm:grid-cols-3 lg:grid-cols-4">
         {figures.map((figure) => (
           <div key={figure.label} className="min-w-0">
@@ -366,7 +387,7 @@ function ReferralPerformance({ view }: { view: AccountingView }) {
           <dd className="font-medium tabular-nums">{formatCount(view.payingMembersAcquired)}</dd>
         </div>
       </dl>
-      <p className="mt-3 text-sm leading-relaxed text-ink/60">The unpaid liability is cumulative through the sample snapshot.</p>
+      <p className="mt-3 text-sm leading-relaxed text-ink/60">The unpaid liability is cumulative through the current snapshot.</p>
       <Bars
         data={view.series.map((point) => ({ label: point.label, value: point.referralCents }))}
         name="Referral pool"
@@ -428,11 +449,13 @@ function ContributionPerformance({ view }: { view: AccountingView }) {
 }
 
 function Earners({ view }: { view: AccountingView }) {
+  const hasEarners = view.leaderboard.length > 0;
   return (
-    <Card title="Referral earners">
-      {view.leaderboard.length === 0 ? (
-        <p className="mt-4 text-sm leading-relaxed text-ink/75">No approved referral earnings in this range.</p>
-      ) : (
+    <Card
+      title="Referral earners"
+      extra={hasEarners ? <Kaomoji>(˘︶˘)☆</Kaomoji> : undefined}
+    >
+      {hasEarners ? (
         <ol className="mt-4 grid gap-3">
           {view.leaderboard.map((row) => (
             <li key={row.rank} className="flex min-w-0 items-center gap-3 border-b border-sand pb-3 text-sm last:border-0">
@@ -450,34 +473,12 @@ function Earners({ view }: { view: AccountingView }) {
             </li>
           ))}
         </ol>
+      ) : (
+        <p className="mt-4 text-sm leading-relaxed text-ink/75">
+          No approved referral earnings in this range. <Kaomoji>(˘ー˘)｡</Kaomoji>
+        </p>
       )}
       <p className="mt-3 text-sm leading-relaxed text-ink/60">First names of people who opted in. Everyone else is listed as an anonymous member.</p>
-    </Card>
-  );
-}
-
-function Results({ view }: { view: AccountingView }) {
-  return (
-    <Card title="Results over this range">
-      {view.series.length < 2 ? (
-        <p className="mt-4 text-sm leading-relaxed text-ink/75">This range is a single month, so the line needs a quarter, a year, or 2025.</p>
-      ) : (
-        <Lines
-          data={view.series.map((point) => ({
-            label: point.label,
-            recognized: point.recognizedCents,
-            expenses: point.expenseCents,
-            net: point.netCents,
-          }))}
-          series={[
-            { key: "recognized", name: "Recognized revenue", color: chartColors.terracotta },
-            { key: "expenses", name: "Operating expenses", color: chartColors.sage },
-            { key: "net", name: "Net result", color: chartColors.golden },
-          ]}
-          money
-          label="Recognized revenue, operating expenses, and net result"
-        />
-      )}
     </Card>
   );
 }
@@ -555,7 +556,9 @@ function Ownership({ view }: { view: AccountingView }) {
 
       <h3 className="mt-8 font-medium">Proposals</h3>
       {proposals.length === 0 ? (
-        <p className="mt-3 text-sm leading-relaxed text-ink/75">No ownership proposals in this sample.</p>
+        <p className="mt-3 text-sm leading-relaxed text-ink/75">
+          No ownership proposals in this period. <Kaomoji>(˘ー˘)｡</Kaomoji>
+        </p>
       ) : (
         <ul className="mt-4 grid gap-4">
           {proposals.map((row) => (
@@ -582,7 +585,9 @@ function Distributions({ view }: { view: AccountingView }) {
   return (
     <Card title="Dividends">
       {view.dividends.length === 0 ? (
-        <p className="mt-4 text-sm leading-relaxed text-ink/75">No dividend has been declared. Forecast profit is not a distribution.</p>
+        <p className="mt-4 text-sm leading-relaxed text-ink/75">
+          No dividend has been declared. Forecast profit is not a distribution. <Kaomoji>(˘ー˘)｡</Kaomoji>
+        </p>
       ) : (
         <ul className="mt-4 grid gap-3 text-sm">
           {view.dividends.map((row) => (
@@ -597,9 +602,7 @@ function Distributions({ view }: { view: AccountingView }) {
 function Participation({ view }: { view: AccountingView }) {
   const credits = [
     ["Issued", formatCount(view.community.creditsIssued)],
-    ["Redeemed", formatCount(view.flow.creditsRedeemed)],
-    ["Outstanding", formatCount(view.community.creditsOutstanding)],
-    ["Exchanged", formatCount(view.community.creditsExchanged)],
+    ["Used", formatCount(view.flow.creditsRedeemed)],
   ] as const;
   return (
     <div className="grid gap-6 md:grid-cols-3">
@@ -727,7 +730,7 @@ function Profit({ view }: { view: AccountingView }) {
   return (
     <Panel id="profit" title="Profit and loss" extra={<Chip tone="sample">Actual</Chip>}>
       <p className="mt-3 max-w-3xl text-sm leading-relaxed text-ink/75">
-        Annual and lifetime cash is recognized over {12} and {60} months under a draft rule. Cash received and revenue earned are different lines. The 50/25/25
+        Annual and lifetime cash is recognized over {12} and {60} months. Cash received and revenue earned are different lines. The 50/25/25
         split is not deducted again here. Refunds and chargebacks already reduced membership cash.
       </p>
       <dl className="mt-4 divide-y divide-sand">
@@ -813,7 +816,8 @@ function Ledger({
   return (
     <Panel id="ledger" title="Transaction ledger">
       <p className="mt-3 text-sm leading-relaxed text-ink/75">
-        Aggregated sample rows. No card numbers, bank details, or another member’s balance. A correction stays beside the original row.
+        Aggregated rows. No card numbers, bank details, or another member’s balance. A correction stays beside the original row.{" "}
+        <Kaomoji>(˘ー˘)｡</Kaomoji>
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <label className="text-sm">
@@ -896,9 +900,9 @@ function Ledger({
 
 function Controls({ view }: { view: AccountingView }) {
   const glossary = [
-    ["Estimated", "A draft allocation. It can change when a policy is adopted."],
-    ["Approved", "An amount the sample has accepted and not yet paid."],
-    ["Paid", "Cash the sample records as disbursed."],
+    ["Estimated", "A calculated allocation. It can change when a policy is adopted."],
+    ["Approved", "An amount accepted and not yet paid."],
+    ["Paid", "Cash recorded as disbursed."],
     ["Advance", "Cash paid ahead of an approved earning, to be offset later."],
     ["Deduction", "An agreed reduction of the member balance."],
     ["Deferred", "Cash collected for a membership that is not yet recognized as revenue."],
@@ -908,11 +912,11 @@ function Controls({ view }: { view: AccountingView }) {
   return (
     <Panel id="controls" title="Financial controls and glossary">
       <p className="mt-3 text-sm leading-relaxed text-ink/75">
-        Draft, approved, and published stay separate. This entire screen is a draft sample. No statement has a publication date.
+        Estimated, approved, and published stay separate. No statement has a publication date.
       </p>
       <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-        <Mini label="Membership receipts" value="Draft · not reconciled" />
-        <Mini label="Expenses" value="Draft · reviewed-sheet stand-in" />
+        <Mini label="Membership receipts" value="Not reconciled" />
+        <Mini label="Expenses" value="Reviewed expense sheet" />
         <Mini label="Deferred revenue" value={formatUsd(view.deferred.totalCents)} />
         <Mini label="Unpaid referral liability" value={formatUsd(view.liabilities.referralUnpaidCents)} />
         <Mini label="Unpaid contributor liability" value={formatUsd(view.liabilities.contributorUnpaidCents)} />

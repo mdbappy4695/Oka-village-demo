@@ -12,6 +12,7 @@ import {
   SNAPSHOT_LABEL,
   activeReferralNumerator,
   canFollowUp,
+  canViewAdmin,
   canViewEarnings,
   canViewOpenAccounting,
   contributionPoints,
@@ -152,15 +153,19 @@ describe("member balance and payouts", () => {
 });
 
 describe("access and privacy", () => {
-  it("keeps Open Accounting to an active trial or a paying member", () => {
+  it("keeps Open Accounting to an active trial, paying member, or admin", () => {
     expect(canViewEarnings("signed-out")).toBe(false);
     expect(canViewEarnings("lapsed")).toBe(true);
     expect(canViewEarnings("trial")).toBe(true);
     expect(canViewEarnings("paying")).toBe(true);
+    expect(canViewEarnings("admin")).toBe(true);
     expect(canViewOpenAccounting("signed-out")).toBe(false);
     expect(canViewOpenAccounting("lapsed")).toBe(false);
     expect(canViewOpenAccounting("trial")).toBe(true);
     expect(canViewOpenAccounting("paying")).toBe(true);
+    expect(canViewOpenAccounting("admin")).toBe(true);
+    expect(canViewAdmin("admin")).toBe(true);
+    expect(canViewAdmin("paying")).toBe(false);
   });
 
   it("offers follow-up only before a membership is purchased", () => {

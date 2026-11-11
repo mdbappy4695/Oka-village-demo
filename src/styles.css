@@ -3,6 +3,7 @@
 @theme {
   --font-serif: "Cormorant Garamond", "Palatino Linotype", Palatino, serif;
   --font-sans: "Inter", "Segoe UI", sans-serif;
+  --font-kaomoji: "Zen Maru Gothic", "Noto Sans JP", "Segoe UI", sans-serif;
   --color-cream: #f9f8f4;
   --color-ink: #372c24;
   --color-terracotta: #bb6a4d;
@@ -26,4 +27,13 @@ body {
   color: var(--color-ink);
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
+}
+
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
 }

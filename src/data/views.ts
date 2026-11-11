@@ -107,6 +107,7 @@ export type AccountingView = {
     contributor: number | null;
     platform: number | null;
     expenses: number | null;
+    ebitda: number | null;
     net: number | null;
   };
   expenseLines: {
@@ -186,8 +187,10 @@ export type AccountingView = {
     id: string;
     label: string;
     eligibleCents: number;
+    membershipCashCents: number;
     recognizedCents: number;
     expenseCents: number;
+    ebitdaCents: number;
     netCents: number;
     members: number;
     paying: number;
@@ -222,8 +225,8 @@ export type MemberAccount = {
   exceptions: string[];
 };
 
-const STRIPE_SOURCE = "Sample, standing in for Stripe";
-const SHEET_SOURCE = "Sample, standing in for a reviewed expense sheet";
+const STRIPE_SOURCE = "Stripe stand-in";
+const SHEET_SOURCE = "Reviewed expense sheet";
 
 const COST_IDS: ExpenseId[] = ["facilitator", "support", "travel"];
 const PAYROLL_IDS: ExpenseId[] = ["salaries", "contractors", "founders"];
@@ -479,10 +482,10 @@ function runwayFor(snapshotMonthId: string, closingCents: number): AccountingVie
       return total + flow.cashReceiptsCents - cashOut(flow);
     }, 0) / prior.length;
   if (average >= 0) {
-    return { months: null, note: "Recent sample months are not burning cash, so a runway countdown is not shown." };
+    return { months: null, note: "Recent months are not burning cash, so a runway countdown is not shown." };
   }
   const months = Math.round((closingCents / -average) * 10) / 10;
-  return { months, note: "Closing sample cash divided by the average cash decrease of the three prior months." };
+  return { months, note: "Closing cash divided by the average cash decrease of the three prior months." };
 }
 
 function pushLedger(rows: LedgerRow[], row: LedgerRow) {
@@ -536,7 +539,7 @@ function buildLedger(): LedgerRow[] {
         feeCents: 0,
         netCents: flow.otherRevenueCents,
         allocation: "Outside the 50/25/25 base",
-        settlement: "Recorded in sample",
+        settlement: "Recorded",
         source: SHEET_SOURCE,
       });
     }
@@ -552,7 +555,7 @@ function buildLedger(): LedgerRow[] {
         feeCents: 0,
         netCents: -amount,
         allocation: "Reduces eligible revenue",
-        settlement: "Recorded in sample",
+        settlement: "Recorded",
         source: STRIPE_SOURCE,
       });
     }
@@ -590,7 +593,7 @@ function receiptRow(date: string, reference: string, grossCents: number, feeCent
     feeCents,
     netCents: grossCents - feeCents,
     allocation: "Eligible revenue",
-    settlement: "Recorded in sample",
+    settlement: "Recorded",
     source: STRIPE_SOURCE,
   };
 }
@@ -606,7 +609,7 @@ function expenseRow(date: string, reference: string, category: string, cents: nu
     feeCents: 0,
     netCents: cents,
     allocation: "Operating cost",
-    settlement: "Recorded in sample",
+    settlement: "Recorded",
     source: SHEET_SOURCE,
   };
 }
@@ -622,7 +625,7 @@ function payoutRow(date: string, reference: string, category: string, cents: num
     feeCents: 0,
     netCents: cents,
     allocation: category.startsWith("Referral") ? "Inside referral pool" : "Inside contributor pool",
-    settlement: "Paid in sample",
+    settlement: "Paid",
     source: SHEET_SOURCE,
   };
 }
@@ -633,15 +636,18 @@ function seriesPoint(month: MonthInput, todayOnly: boolean): AccountingView["ser
   const flow = flowOf(month, todayOnly);
   const recognized = recognizedIn([month.id], todayOnly);
   const operating = EXPENSE_CATEGORIES.filter((category) => !category.bridge).reduce((sum, category) => sum + flow.expenses[category.id], 0);
-  const net = recognized.totalCents - flow.processingFeeCents - operating - flow.depreciationCents - flow.interestCents - flow.taxProvisionCents;
+  const ebitda = recognized.totalCents - operating - flow.processingFeeCents;
+  const net = ebitda - flow.depreciationCents - flow.interestCents - flow.taxProvisionCents;
   const paying = month.payingMonthly + month.payingAnnual + month.payingLifetime;
   const allocation = splitEligible(flow.eligibleCents);
   return {
     id: month.id,
     label: todayOnly ? "8 Nov" : monthLabel(month.id).slice(0, 3),
     eligibleCents: flow.eligibleCents,
+    membershipCashCents: flow.monthlyCashCents + flow.annualCashCents + flow.lifetimeCashCents,
     recognizedCents: recognized.totalCents,
     expenseCents: operating,
+    ebitdaCents: ebitda,
     netCents: net,
     members: month.registered,
     paying,
@@ -654,10 +660,12 @@ function seriesPoint(month: MonthInput, todayOnly: boolean): AccountingView["ser
 
 function headline(flow: MoneyFlow, recognizedCents: number) {
   const operatingCents = EXPENSE_CATEGORIES.filter((category) => !category.bridge).reduce((sum, category) => sum + flow.expenses[category.id], 0);
+  const ebitdaCents = recognizedCents - operatingCents - flow.processingFeeCents;
   return {
     eligibleCents: flow.eligibleCents,
     operatingCents,
-    netCents: recognizedCents - operatingCents - flow.processingFeeCents - flow.depreciationCents - flow.interestCents - flow.taxProvisionCents,
+    ebitdaCents,
+    netCents: ebitdaCents - flow.depreciationCents - flow.interestCents - flow.taxProvisionCents,
     ...splitEligible(flow.eligibleCents),
   };
 }
@@ -670,22 +678,17 @@ export function buildAccounting(kind: RangeKind, year?: number): AccountingView 
   const allocation = splitEligible(flow.eligibleCents);
   const previousFlow = range.previousMonthIds ? sumFlows(range.previousMonthIds, false) : null;
   const previousHeadline = previousFlow && range.previousMonthIds ? headline(previousFlow, recognizedIn(range.previousMonthIds, false).totalCents) : null;
+  const currentOperating = EXPENSE_CATEGORIES.filter((category) => !category.bridge).reduce((sum, category) => sum + flow.expenses[category.id], 0);
+  const currentEbitda = recognized.totalCents - currentOperating - flow.processingFeeCents;
   const moneyGrowth = {
     eligible: growthPercent(flow.eligibleCents, previousHeadline?.eligibleCents ?? null),
     referral: growthPercent(allocation.referralCents, previousHeadline?.referralCents ?? null),
     contributor: growthPercent(allocation.contributorCents, previousHeadline?.contributorCents ?? null),
     platform: growthPercent(allocation.platformCents, previousHeadline?.platformCents ?? null),
-    expenses: growthPercent(
-      EXPENSE_CATEGORIES.filter((category) => !category.bridge).reduce((sum, category) => sum + flow.expenses[category.id], 0),
-      previousHeadline?.operatingCents ?? null,
-    ),
+    expenses: growthPercent(currentOperating, previousHeadline?.operatingCents ?? null),
+    ebitda: growthPercent(currentEbitda, previousHeadline?.ebitdaCents ?? null),
     net: growthPercent(
-      recognized.totalCents -
-        EXPENSE_CATEGORIES.filter((category) => !category.bridge).reduce((sum, category) => sum + flow.expenses[category.id], 0) -
-        flow.processingFeeCents -
-        flow.depreciationCents -
-        flow.interestCents -
-        flow.taxProvisionCents,
+      currentEbitda - flow.depreciationCents - flow.interestCents - flow.taxProvisionCents,
       previousHeadline?.netCents ?? null,
     ),
   };
@@ -960,7 +963,7 @@ export function buildMemberAccount(): MemberAccount {
     invites: INVITES,
     exceptions: [
       "November earnings are still open. Pending referral credit is not in the 20 November payout.",
-      "No payout threshold is set in this sample.",
+      "No payout threshold is set.",
       "The refund-related adjustment is already in the balance. It is not deducted a second time.",
     ],
   };

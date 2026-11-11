@@ -1,12 +1,13 @@
 import { useEffect } from "react";
 import type { AccessRole } from "../lib/allocate";
 import { useDemo } from "../demo/DemoContext";
-import { Eyebrow, focusRing } from "../components/ui";
+import { Eyebrow, Kaomoji, focusRing } from "../components/ui";
 
 const entries: { role: AccessRole; label: string }[] = [
   { role: "paying", label: "Enter as a paying member" },
   { role: "trial", label: "Enter on a free trial" },
   { role: "lapsed", label: "Enter as a lapsed member" },
+  { role: "admin", label: "Enter as admin" },
 ];
 
 export function Gate() {
@@ -25,7 +26,8 @@ export function Gate() {
         </div>
         <h1 className="mt-3 font-serif text-5xl leading-tight">Members only</h1>
         <p className="mt-4 max-w-md text-lg leading-relaxed text-ink/80">
-          Earnings is part of a member account. Open Accounting is for a paying member or a trial that is still inside seven days.
+          Earnings is part of a member account. Open Accounting is for a paying member or a trial that is still inside seven days.{" "}
+          <Kaomoji>╰(´︶`)╯♡</Kaomoji>
         </p>
         <div className="mt-8 flex flex-col gap-3">
           {entries.map((entry) => (
@@ -41,9 +43,6 @@ export function Gate() {
             </button>
           ))}
         </div>
-        <p className="mt-4 text-sm leading-relaxed text-ink/70">
-          This is a demonstration and is not connected to Stripe. The route guard stands in for a server check.
-        </p>
       </section>
     </main>
   );

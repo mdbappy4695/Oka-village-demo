@@ -32,6 +32,17 @@ export function Eyebrow({ children }: { children: ReactNode }) {
   return <p className="text-xs font-medium tracking-[0.22em] text-terracotta uppercase">{children}</p>;
 }
 
+export function Kaomoji({ children }: { children: string }) {
+  return (
+    <span
+      className="inline-flex items-center rounded-full bg-sage-light px-2.5 py-0.5 font-kaomoji text-base font-medium tracking-wide text-terracotta"
+      aria-hidden="true"
+    >
+      {children}
+    </span>
+  );
+}
+
 export function Panel({
   id,
   title,

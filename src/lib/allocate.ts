@@ -24,7 +24,7 @@ export const DRAFT_POLICY = {
 
 /** Sample point settings. Points are not cash and are not a payout promise. */
 export const POINT_RULES = {
-  label: "Sample configuration",
+  label: "Point configuration",
   perHostedEvent: 10,
   perVerifiedAttendee: 1,
   convertsToCash: false,
@@ -51,7 +51,7 @@ export type Allocation = {
   platformCents: number;
 };
 
-export type AccessRole = "signed-out" | "lapsed" | "trial" | "paying";
+export type AccessRole = "signed-out" | "lapsed" | "trial" | "paying" | "admin";
 
 export type RangeKind = "today" | "month" | "quarter" | "year" | "history";
 
@@ -243,7 +243,11 @@ export function canViewEarnings(role: AccessRole): boolean {
 }
 
 export function canViewOpenAccounting(role: AccessRole): boolean {
-  return role === "trial" || role === "paying";
+  return role === "trial" || role === "paying" || role === "admin";
+}
+
+export function canViewAdmin(role: AccessRole): boolean {
+  return role === "admin";
 }
 
 export type MembershipStatus = "free-trial" | "active-paid" | "expired-trial" | "cancelled";

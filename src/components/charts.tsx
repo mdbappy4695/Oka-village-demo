@@ -77,11 +77,13 @@ export function Lines({
   series,
   money,
   label,
+  tall = false,
 }: {
   data: ({ label: string } & Record<string, string | number>)[];
   series: { key: string; name: string; color: string }[];
   money: boolean;
   label: string;
+  tall?: boolean;
 }) {
   const chartData = data.map((point) => {
     const next: { label: string } & Record<string, string | number> = { label: point.label };
@@ -93,7 +95,7 @@ export function Lines({
   });
   return (
     <div className="mt-4" role="img" aria-label={label}>
-      <div className="h-56">
+      <div className={tall ? "h-72" : "h-56"}>
         <ResponsiveContainer width="100%" height="100%">
           <LineChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
             <CartesianGrid stroke={chartColors.sand} vertical={false} />
