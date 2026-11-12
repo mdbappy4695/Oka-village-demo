@@ -66,7 +66,7 @@ export function Earnings() {
           <h1 className={stale ? "mt-3 font-serif text-5xl" : "font-serif text-5xl"}>My Earnings</h1>
           <p className="mt-3 max-w-2xl text-lg leading-relaxed text-ink/80">
             Only Avery’s invitations, points, and payments. No other member’s balance is on this page.{" "}
-            <Kaomoji>(˘ー˘)｡</Kaomoji>
+            <Kaomoji>(´･ω･`)</Kaomoji>
           </p>
         </header>
 
@@ -160,7 +160,7 @@ export function Earnings() {
           {month.pendingCents > 0 && (
             <p className="mt-4 text-sm leading-relaxed text-ink/75">
               <Chip tone="estimated">Estimated</Chip> {formatUsd(month.pendingCents)} is calculated and not yet approved.{" "}
-              <Kaomoji>(˘ー˘)｡</Kaomoji>
+              <Kaomoji>(´･ω･`)</Kaomoji>
             </p>
           )}
           <h3 className="mt-6 font-medium">New invitations each month</h3>
@@ -185,7 +185,7 @@ export function Earnings() {
         <Panel title="People you invited">
           <p className="mt-3 text-sm leading-relaxed text-ink/75">
             First names only. Follow-up never reveals an email address or a phone number, and it closes once someone has purchased a membership.{" "}
-            <Kaomoji>(˘ー˘)｡</Kaomoji>
+            <Kaomoji>(´･ω･`)</Kaomoji>
           </p>
           <div className="mt-4 max-w-full overflow-x-auto">
             <table className="w-full min-w-[880px] text-left text-sm">
@@ -297,7 +297,7 @@ export function Earnings() {
                 {spanEvents.length === 0 && (
                   <tr>
                     <td colSpan={10} className="py-4 text-ink/70">
-                      No hosted events in this {grain}. <Kaomoji>(˘ー˘)｡</Kaomoji>
+                      No hosted events in this {grain}. <Kaomoji>(´･ω･`)</Kaomoji>
                     </td>
                   </tr>
                 )}

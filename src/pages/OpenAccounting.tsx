@@ -199,14 +199,14 @@ function Overview({ view, stale }: { view: AccountingView; stale: boolean }) {
             label="Money at a glance for this range"
             empty="No money movement in this range."
           />
-          <ul className="flex flex-col gap-3" aria-label="Money at a glance amounts">
+          <ul className="grid w-fit max-w-full grid-cols-[auto_auto] items-baseline gap-x-6 gap-y-3" aria-label="Money at a glance amounts">
             {glance.map((slice) => (
-              <li key={slice.name} className="flex min-w-0 items-baseline justify-between gap-4 text-sm">
-                <span className="flex min-w-0 items-center gap-2 text-ink/80">
+              <li key={slice.name} className="contents">
+                <span className="flex min-w-0 items-center gap-2 text-sm text-ink/80">
                   <span className="size-3 shrink-0 rounded-full" style={{ background: slice.color }} />
                   <span className="truncate">{slice.name}</span>
                 </span>
-                <span className="shrink-0 font-medium tabular-nums text-ink">{formatUsd(slice.cents)}</span>
+                <span className="text-right text-sm font-medium tabular-nums text-ink">{formatUsd(slice.cents)}</span>
               </li>
             ))}
           </ul>
@@ -246,7 +246,7 @@ function Allocation({ view }: { view: AccountingView }) {
       extra={
         <span className="inline-flex flex-wrap items-center gap-2">
           <Chip tone="estimated">Estimated</Chip>
-          <Kaomoji>(˘ー˘)｡</Kaomoji>
+          <Kaomoji>(´･ω･`)</Kaomoji>
         </span>
       }
     >
@@ -469,7 +469,7 @@ function Earners({ view }: { view: AccountingView }) {
         </ol>
       ) : (
         <p className="mt-4 text-sm leading-relaxed text-ink/75">
-          No approved referral earnings in this range. <Kaomoji>(˘ー˘)｡</Kaomoji>
+          No approved referral earnings in this range. <Kaomoji>(´･ω･`)</Kaomoji>
         </p>
       )}
       <p className="mt-3 text-sm leading-relaxed text-ink/60">First names of people who opted in. Everyone else is listed as an anonymous member.</p>
@@ -555,7 +555,7 @@ function Distributions({ view }: { view: AccountingView }) {
     <Card title="Dividends">
       {view.dividends.length === 0 ? (
         <p className="mt-4 text-sm leading-relaxed text-ink/75">
-          No dividend has been declared. Forecast profit is not a distribution. <Kaomoji>(˘ー˘)｡</Kaomoji>
+          No dividend has been declared. Forecast profit is not a distribution. <Kaomoji>(´･ω･`)</Kaomoji>
         </p>
       ) : (
         <ul className="mt-4 grid gap-3 text-sm">
@@ -786,7 +786,7 @@ function Ledger({
     <Panel id="ledger" title="Transaction ledger">
       <p className="mt-3 text-sm leading-relaxed text-ink/75">
         Aggregated rows. No card numbers, bank details, or another member’s balance. A correction stays beside the original row.{" "}
-        <Kaomoji>(˘ー˘)｡</Kaomoji>
+        <Kaomoji>(´･ω･`)</Kaomoji>
       </p>
       <div className="mt-4 flex flex-col gap-3 sm:flex-row">
         <label className="text-sm">
